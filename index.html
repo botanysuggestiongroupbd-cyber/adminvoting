@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botany Suggestion Group - চতুর্থ নির্বাচন</title>
+    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+    <style>
+        /* আপনার CSS স্টাইলগুলো একই থাকবে */
+        body {
+            font-family: 'SolaimanLipi', Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .candidate-card {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .candidate-card:hover {
+            border-color: #4CAF50;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .candidate-card.selected {
+            border-color: #4CAF50;
+            background: linear-gradient(135deg, #E8F5E8, #C8E6C9);
+        }
+        .candidate-marker {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: white;
+            flex-shrink: 0;
+        }
+        .candidate-info {
+            flex-grow: 1;
+        }
+        .candidate-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0;
+            color: #333;
+        }
+        .vote-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 20px;
+            margin: 25px 0;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .vote-btn:hover:not(:disabled) {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+        .vote-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .voter-info {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        .selected-candidates {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            border: 3px solid #fdcb6e;
+        }
+        .selected-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-left: 5px solid #4CAF50;
+        }
+        .admin-section {
+            background: #ffebee;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 25px 0;
+            border: 3px solid #f44336;
+        }
+        .instructions {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 5px solid #2196F3;
+        }
+        .counter {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+        .error-message {
+            color: #f44336;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+        .results-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 15px 10px;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .results-btn:hover {
+            background: #1976D2;
+            transform: scale(1.05);
+        }
+        .voting-closed {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            border: 3px solid #f44336;
+            text-align: center;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- ভোটিং সেকশন -->
+        <div id="voting-section">
+            <h1 style="text-align: center; color: #2c3e50; margin-bottom: 30px;">
+                🌿 Botany Suggestion Group Bangladesh - চতুর্থ নির্বাচন
+            </h1>
+            
+            <!-- Show Results Button - Always Visible -->
+            <div style="text-align: center; margin: 20px 0;">
+                <button class="results-btn" onclick="viewResultsPage()">
+                    📊 ফলাফল দেখুন
+                </button>
+            </div>
+
+            <div class="instructions">
+                <h3>📋 ভোটের নিয়মাবলি:</h3>
+                <ul style="font-size: 16px; line-height: 1.6;">
+                    <li>✅ আপনাকে <strong>ঠিক ২ জন প্রার্থী</strong>কে ভোট দিতে হবে (কম বা বেশি নয়)</li>
+                    <li>✅ ভোটার নাম <strong>অবশ্যই</strong> দিতে হবে</li>
+                    <li>✅ ভোট একবারই দিতে পারবেন</li>
+                    <li>✅ ভোট দেওয়ার পর পরিবর্তন করা যাবে না</li>
+                </ul>
+            </div>
+
+            <!-- Voting Closed Message -->
+            <div class="voting-closed" id="voting-closed-message" style="display: none;">
+                <h3>⛔ ভোটিং বন্ধ</h3>
+                <p>ফলাফল প্রকাশিত হয়েছে। এখন আর ভোট দেওয়া যাবে না।</p>
+                <p>ফলাফল দেখতে উপরের "ফলাফল দেখুন" বাটনে ক্লিক করুন।</p>
+            </div>
+
+            <!-- ভোটার তথ্য -->
+            <div class="voter-info" id="voter-info-section">
+                <h3>👤 ভোটার তথ্য</h3>
+                <div class="form-group">
+                    <label for="voter-name">আপনার নাম (অবশ্যই পূরণ করুন):</label>
+                    <input type="text" id="voter-name" placeholder="আপনার পূর্ণ নাম লিখুন" maxlength="50">
+                    <div id="name-error" class="error-message">নাম অবশ্যই দিতে হবে</div>
+                </div>
+            </div>
+
+            <h3 style="text-align: center; color: #2c3e50; margin: 30px 0;" id="candidate-selection-title">🗳️ প্রার্থী নির্বাচন করুন (ঠিক ২ জন):</h3>
+            
+            <!-- Candidates List with Loading -->
+            <div id="candidates-container">
+                <div class="loading" id="candidates-loading">প্রার্থীদের তালিকা লোড হচ্ছে...</div>
+                <div id="candidates-list" style="display: none;"></div>
+            </div>
+
+            <div class="selected-candidates" id="selected-candidates" style="display: none;">
+                <h3>✅ আপনার নির্বাচিত প্রার্থী (২ জন):</h3>
+                <div id="selected-list"></div>
+                <div class="counter" id="selection-counter">০/২ জন প্রার্থী নির্বাচিত</div>
+            </div>
+
+            <div style="text-align: center;">
+                <button id="vote-btn" class="vote-btn" onclick="submitVote()" disabled>
+                    ভোট জমা দিন ✅
+                </button>
+            </div>
+            
+            <!-- Admin Section -->
+            <div class="admin-section" id="admin-section" style="display: none;">
+                <h3>🔧 Admin Panel</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button onclick="resetAllVotes()" style="background: #f44336; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer;">
+                        সব ভোট রিসেট করুন
+                    </button>
+                    <button onclick="viewResults()" style="background: #2196F3; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer;">
+                        ফলাফল দেখুন
+                    </button>
+                    <button onclick="clearLocalStorage()" style="background: #FF9800; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer;">
+                        লোকাল স্টোরেজ ক্লিয়ার
+                    </button>
+                </div>
+                <div id="admin-results" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+
+        <!-- ভোট দেওয়ার পর মেসেজ -->
+        <div id="after-vote" style="display: none; text-align: center; padding: 60px 20px;">
+            <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 5px 25px rgba(0,0,0,0.1);">
+                <div style="font-size: 80px; margin-bottom: 20px;">🎉</div>
+                <h2 style="color: #4CAF50; margin-bottom: 15px;">ধন্যবাদ! আপনার ভোট সফলভাবে জমা হয়েছে</h2>
+                <p style="font-size: 18px; color: #666; margin-bottom: 25px;">
+                    <strong id="voter-thank"></strong>, আপনার মূল্যবান ভোটের জন্য অসংখ্য ধন্যবাদ
+                </p>
+                <div id="vote-summary" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;"></div>
+                <p style="color: #888;">নির্বাচনের ফলাফল Admin দ্বারা ঘোষণা করা হবে</p>
+                
+                <!-- Show Results Button in after vote section -->
+                <button class="results-btn" onclick="viewResultsPage()">
+                    📊 ফলাফল দেখুন
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyChDeqEPatoWTUPoZpcYOSXcnAuoVJsV-c",
+            authDomain: "apps-login-page.firebaseapp.com",
+            projectId: "apps-login-page",
+            storageBucket: "apps-login-page.firebasestorage.app",
+            messagingSenderId: "601656721972",
+            appId: "1:601656721972:web:20ce6efffc82b2e0b68061",
+            measurementId: "G-RPPBB0C7BQ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // প্রার্থীদের লিস্ট with unique markers
+        const candidates = [
+            { id: 1, name: "Aoual Sheikh", marker: "🐕", color: "#e74c3c" },
+            { id: 2, name: "Afrin Sultana", marker: "🦒", color: "#3498db" },
+            { id: 3, name: "Amio Biswas", marker: "🐓", color: "#2ecc71" },
+            { id: 4, name: "Amrita Rani", marker: "🦚", color: "#f39c12" },
+            { id: 5, name: "Ashik Khan", marker: "🐋", color: "#9b59b6" },
+            { id: 6, name: "Fahmida Sultana", marker: "🐬", color: "#1abc9c" },
+            { id: 7, name: "Esrat Jahan Emi", marker: "🪳", color: "#d35400" },
+            { id: 8, name: "Fazle", marker: "🪰", color: "#c0392b" },
+            { id: 9, name: "Sabbir Hosain", marker: "🦟", color: "#16a085" },
+            { id: 10, name: "Mahmuda Akter Sumee", marker: "🕷️", color: "#8e44ad" },
+            { id: 11, name: "Itz Amirul", marker: "🦖", color: "#27ae60" },
+            { id: 12, name: "Kawsar Alam", marker: "🦉", color: "#e67e22" },
+            { id: 13, name: "Kazi Nazmul Hasan", marker: "🐥", color: "#2980b9" },
+            { id: 14, name: "Lamis Shikder", marker: "🪶", color: "#f1c40f" },
+            { id: 15, name: "Md Joni Islam", marker: "🐘", color: "#e91e63" },
+            { id: 16, name: "Md Samiul Alam", marker: "🐙", color: "#00bcd4" },
+            { id: 17, name: "Misbah Akter Mithila", marker: "🐱", color: "#795548" },
+            { id: 18, name: "Tanvir Hassan", marker: "🦓", color: "#607d8b" },
+            { id: 19, name: "Mohon Talukder", marker: "🦌", color: "#3f51b5" },
+            { id: 20, name: "Moriam Mim", marker: "🦩", color: "#009688" },
+            { id: 21, name: "Nasrin Akter Tarin", marker: "🌵", color: "#ff5722" },
+            { id: 22, name: "Priti Das", marker: "🌹", color: "#673ab7" },
+            { id: 23, name: "Rayhan Hossain Hridoy", marker: "💐", color: "#ff9800" },
+            { id: 24, name: "Riyad Hossain", marker: "🦭", color: "#2196f3" },
+            { id: 25, name: "Sadia Sultana", marker: "🐌", color: "#4caf50" },
+            { id: 26, name: "Saifa Ahmed", marker: "🐝", color: "#ffeb3b" },
+            { id: 27, name: "Sakil Khan", marker: "🌻", color: "#9c27b0" },
+            { id: 28, name: "Sanjida Khan Koli", marker: "🐜", color: "#00bcd4" },
+            { id: 29, name: "Sakila Simi", marker: "🦋", color: "#ffc107" },
+            { id: 30, name: "Shojeb Rana", marker: "🦅", color: "#8bc34a" },
+            { id: 31, name: "Sujoy Sarker", marker: "🦜", color: "#e91e63" },
+            { id: 32, name: "Tanjina Akter", marker: "🐴", color: "#3f51b5" },
+            { id: 33, name: "Tasrin Akter Bristy", marker: "🥥", color: "#009688" },
+            { id: 34, name: "Tayba Haider Riya", marker: "🍅", color: "#ff5722" },
+            { id: 35, name: "Md Roman Molla", marker: "🌶️", color: "#795548" },
+            { id: 36, name: "Md Sujon Shikder", marker: "🌽", color: "#607d8b" },
+            { id: 37, name: "Sadek Mia", marker: "🍉", color: "#f44336" },
+            { id: 38, name: "Md Rana Ahmed", marker: "🍄", color: "#4caf50" },
+            { id: 39, name: "Md Saidul Haque", marker: "🥭", color: "#2196f3" }
+        ];
+
+        const settingsDoc = doc(db, "settings", "election");
+        let selectedCandidates = [];
+        let deviceFingerprint = '';
+        let hasVoted = false;
+        let resultsPublished = false;
+
+        // ফলাফল প্রকাশিত কিনা চেক করা
+        async function checkResultsPublished() {
+            try {
+                const docSnap = await getDoc(settingsDoc);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    resultsPublished = data.resultsPublished || false;
+                    console.log("Results published status:", resultsPublished);
+                    
+                    if (resultsPublished) {
+                        disableVoting();
+                    } else {
+                        enableVoting();
+                    }
+                } else {
+                    resultsPublished = false;
+                    enableVoting();
+                }
+            } catch (error) {
+                console.error("Error checking results status:", error);
+                resultsPublished = false;
+                enableVoting();
+            }
+        }
+
+        // ভোটিং বন্ধ করা
+        function disableVoting() {
+            document.getElementById('voting-closed-message').style.display = 'block';
+            document.getElementById('voter-info-section').style.display = 'none';
+            document.getElementById('candidate-selection-title').style.display = 'none';
+            document.getElementById('candidates-container').style.display = 'none';
+            document.getElementById('selected-candidates').style.display = 'none';
+            document.getElementById('vote-btn').style.display = 'none';
+            
+            // ভোট বাটন ডিসেবল করুন
+            document.getElementById('vote-btn').disabled = true;
+        }
+
+        // ভোটিং চালু করা
+        function enableVoting() {
+            document.getElementById('voting-closed-message').style.display = 'none';
+            document.getElementById('voter-info-section').style.display = 'block';
+            document.getElementById('candidate-selection-title').style.display = 'block';
+            document.getElementById('candidates-container').style.display = 'block';
+            document.getElementById('vote-btn').style.display = 'block';
+        }
+
+        // ar.html পেজে রিডাইরেক্ট
+        window.viewResultsPage = function() {
+            window.location.href = 'ar.html';
+        }
+
+        // ডিভাইস ফিঙ্গারপ্রিন্ট জেনারেট করা
+        async function generateFingerprint() {
+            try {
+                const fp = await FingerprintJS.load();
+                const result = await fp.get();
+                return result.visitorId;
+            } catch (error) {
+                console.error('ফিঙ্গারপ্রিন্ট Error:', error);
+                return 'device_' + Math.random().toString(36).substr(2, 9);
+            }
+        }
+
+        // প্রার্থীদের লিস্ট দেখানো - FIXED VERSION
+        function displayCandidates() {
+            console.log("Displaying candidates...");
+            const container = document.getElementById('candidates-list');
+            const loading = document.getElementById('candidates-loading');
+            
+            if (!container) {
+                console.error("Candidates list container not found!");
+                return;
+            }
+            
+            try {
+                // লোডিং হাইড করুন
+                loading.style.display = 'none';
+                container.style.display = 'block';
+                container.innerHTML = '';
+                
+                console.log("Total candidates:", candidates.length);
+                
+                candidates.forEach(candidate => {
+                    const card = document.createElement('div');
+                    card.className = 'candidate-card';
+                    card.innerHTML = `
+                        <div class="candidate-marker" style="background: ${candidate.color}">
+                            ${candidate.marker}
+                        </div>
+                        <div class="candidate-info">
+                            <div class="candidate-name">${candidate.name}</div>
+                            <div style="color: #666; font-size: 14px;">মার্কা: ${candidate.marker}</div>
+                        </div>
+                    `;
+                    
+                    card.onclick = () => toggleCandidate(candidate, card);
+                    container.appendChild(card);
+                });
+                
+                console.log("Candidates displayed successfully");
+            } catch (error) {
+                console.error("Error displaying candidates:", error);
+                container.innerHTML = '<div class="loading">প্রার্থীদের তালিকা লোড করতে সমস্যা হয়েছে। পৃষ্ঠাটি রিফ্রেশ করুন।</div>';
+            }
+        }
+
+        // প্রার্থী সিলেক্ট/ডিসিলেক্ট
+        function toggleCandidate(candidate, card) {
+            if (hasVoted) {
+                alert('আপনি ইতিমধ্যে ভোট দিয়েছেন!');
+                return;
+            }
+
+            if (resultsPublished) {
+                alert('ফলাফল প্রকাশিত হয়েছে। এখন আর ভোট দেওয়া যাবে না।');
+                return;
+            }
+            
+            const index = selectedCandidates.findIndex(c => c.id === candidate.id);
+            
+            if (index === -1) {
+                if (selectedCandidates.length < 2) {
+                    selectedCandidates.push(candidate);
+                    card.classList.add('selected');
+                } else {
+                    alert('আপনি শুধুমাত্র ২ জন প্রার্থীকে ভোট দিতে পারবেন। আরেকজন নির্বাচন করতে আগে একজন ডিসিলেক্ট করুন।');
+                    return;
+                }
+            } else {
+                selectedCandidates.splice(index, 1);
+                card.classList.remove('selected');
+            }
+            
+            updateSelectedList();
+            updateVoteButton();
+        }
+
+        // সিলেক্টেড প্রার্থীদের লিস্ট আপডেট
+        function updateSelectedList() {
+            const container = document.getElementById('selected-list');
+            const section = document.getElementById('selected-candidates');
+            const counter = document.getElementById('selection-counter');
+            
+            if (selectedCandidates.length > 0) {
+                section.style.display = 'block';
+                container.innerHTML = selectedCandidates.map(candidate => `
+                    <div class="selected-item">
+                        <div class="candidate-marker" style="background: ${candidate.color}">
+                            ${candidate.marker}
+                        </div>
+                        <div>
+                            <strong>${candidate.name}</strong>
+                            <div style="color: #666; font-size: 14px;">মার্কা: ${candidate.marker}</div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                counter.textContent = `${selectedCandidates.length}/২ জন প্রার্থী নির্বাচিত`;
+                counter.style.color = selectedCandidates.length === 2 ? '#4CAF50' : '#f39c12';
+                counter.style.fontWeight = selectedCandidates.length === 2 ? 'bold' : 'normal';
+            } else {
+                section.style.display = 'none';
+            }
+        }
+
+        // ভোট বাটন আপডেট
+        function updateVoteButton() {
+            const voteBtn = document.getElementById('vote-btn');
+            const voterName = document.getElementById('voter-name').value.trim();
+            const nameError = document.getElementById('name-error');
+            
+            // নাম ভ্যালিডেশন
+            if (voterName === '') {
+                nameError.style.display = 'block';
+            } else {
+                nameError.style.display = 'none';
+            }
+            
+            // ফলাফল প্রকাশিত হলে ভোট বন্ধ
+            if (resultsPublished) {
+                voteBtn.disabled = true;
+                voteBtn.textContent = '⛔ ভোটিং বন্ধ';
+                return;
+            }
+            
+            // বাটন এনাবল/ডিসেবল
+            const canVote = selectedCandidates.length === 2 && voterName !== '' && !hasVoted;
+            voteBtn.disabled = !canVote;
+        }
+
+        // ভোট জমা দেওয়া
+        window.submitVote = async function() {
+            const voterName = document.getElementById('voter-name').value.trim();
+            
+            // ফলাফল প্রকাশিত হলে ভোট বন্ধ
+            if (resultsPublished) {
+                alert('ফলাফল প্রকাশিত হয়েছে। এখন আর ভোট দেওয়া যাবে না।');
+                return;
+            }
+            
+            // ভ্যালিডেশন
+            if (voterName === '') {
+                alert('দয়া করে আপনার নাম লিখুন');
+                document.getElementById('voter-name').focus();
+                return;
+            }
+            
+            if (selectedCandidates.length !== 2) {
+                alert('দয়া করে ঠিক ২ জন প্রার্থী নির্বাচন করুন');
+                return;
+            }
+
+            if (hasVoted) {
+                alert('আপনি ইতিমধ্যে ভোট দিয়েছেন!');
+                return;
+            }
+
+            try {
+                // ডিভাইস ফিঙ্গারপ্রিন্ট
+                const fingerprint = await generateFingerprint();
+                deviceFingerprint = fingerprint;
+
+                // Firestore-এ চেক করা
+                const votesQuery = query(collection(db, "votes"), where("fingerprint", "==", fingerprint));
+                const querySnapshot = await getDocs(votesQuery);
+                
+                if (!querySnapshot.empty) {
+                    alert('এই ডিভাইস থেকে ইতিমধ্যে ভোট দেওয়া হয়েছে!');
+                    hasVoted = true;
+                    updateVoteButton();
+                    return;
+                }
+
+                // ভোট ডাটা
+                const voteData = {
+                    voterName: voterName,
+                    candidate1: selectedCandidates[0].name,
+                    candidate1_marker: selectedCandidates[0].marker,
+                    candidate2: selectedCandidates[1].name,
+                    candidate2_marker: selectedCandidates[1].marker,
+                    fingerprint: fingerprint,
+                    timestamp: new Date(),
+                    userAgent: navigator.userAgent,
+                    ipAddress: await getIPAddress()
+                };
+
+                // Firestore-এ সেভ
+                await addDoc(collection(db, "votes"), voteData);
+                
+                // লোকাল স্টোরেজ
+                localStorage.setItem('hasVoted', 'true');
+                localStorage.setItem('voteFingerprint', fingerprint);
+                localStorage.setItem('voteTime', new Date().toISOString());
+                localStorage.setItem('voterName', voterName);
+                
+                hasVoted = true;
+                showAfterVote(voterName);
+                
+            } catch (error) {
+                console.error('ভোট Error:', error);
+                alert('ভোট জমা দেওয়ার সময় সমস্যা হয়েছে: ' + error.message);
+            }
+        }
+
+        // IP অ্যাড্রেস
+        async function getIPAddress() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (error) {
+                return 'unknown';
+            }
+        }
+
+        // ভোট স্ট্যাটাস চেক - FIXED VERSION
+        async function checkVoteStatus() {
+            try {
+                const fingerprint = await generateFingerprint();
+                deviceFingerprint = fingerprint;
+                
+                // প্রথমে Firebase থেকে চেক করুন
+                const votesQuery = query(collection(db, "votes"), where("fingerprint", "==", fingerprint));
+                const querySnapshot = await getDocs(votesQuery);
+                
+                if (!querySnapshot.empty) {
+                    // Firebase-এ ভোট আছে
+                    hasVoted = true;
+                    localStorage.setItem('hasVoted', 'true');
+                    const voteData = querySnapshot.docs[0].data();
+                    showAfterVote(voteData.voterName);
+                } else {
+                    // Firebase-এ ভোট নেই, কিন্তু Local Storage-এ আছে
+                    const localVote = localStorage.getItem('hasVoted');
+                    if (localVote === 'true') {
+                        // Local Storage এবং Firebase不一致 - Local Storage ক্লিয়ার করুন
+                        console.log("Clearing inconsistent local storage...");
+                        clearLocalVoteStorage();
+                    }
+                    hasVoted = false;
+                    showVotingSection();
+                }
+            } catch (error) {
+                console.error('Status check error:', error);
+                // Error হলে Local Storage চেক করুন
+                const localVote = localStorage.getItem('hasVoted');
+                if (localVote === 'true') {
+                    hasVoted = true;
+                    const savedName = localStorage.getItem('voterName') || 'ভোটার';
+                    showAfterVote(savedName);
+                } else {
+                    showVotingSection();
+                }
+            }
+        }
+
+        // Local Storage ক্লিয়ার করার ফাংশন
+        function clearLocalVoteStorage() {
+            localStorage.removeItem('hasVoted');
+            localStorage.removeItem('voteFingerprint');
+            localStorage.removeItem('voteTime');
+            localStorage.removeItem('voterName');
+        }
+
+        // ভোট দেওয়ার পরের ভিউ
+        function showAfterVote(voterName) {
+            document.getElementById('voting-section').style.display = 'none';
+            document.getElementById('after-vote').style.display = 'block';
+            document.getElementById('voter-thank').textContent = voterName;
+            
+            // ভোট সামারি
+            const summary = document.getElementById('vote-summary');
+            summary.innerHTML = `
+                <h4 style="margin-bottom: 15px; color: #333;">আপনার ভোট:</h4>
+                ${selectedCandidates.map(candidate => `
+                    <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 10px; background: white; border-radius: 8px;">
+                        <div class="candidate-marker" style="background: ${candidate.color}; width: 40px; height: 40px; font-size: 16px;">
+                            ${candidate.marker}
+                        </div>
+                        <div>
+                            <strong>${candidate.name}</strong>
+                            <div style="color: #666; font-size: 14px;">মার্কা: ${candidate.marker}</div>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        // Admin ফাংশনগুলো
+        window.resetAllVotes = async function() {
+            if (!confirm('⚠️ আপনি কি নিশ্চিত যে সব ভোট ডিলেট করতে চান? এটি রিভার্সিবল নয়!')) {
+                return;
+            }
+
+            if (!confirm('❌ FINAL WARNING: সব ভোট এবং Local Storage ডাটা ডিলেট হবে!')) {
+                return;
+            }
+
+            try {
+                // Firebase ভোট ডিলেট
+                const querySnapshot = await getDocs(collection(db, "votes"));
+                const deletePromises = [];
+                querySnapshot.forEach((doc) => {
+                    deletePromises.push(deleteDoc(doc.ref));
+                });
+                await Promise.all(deletePromises);
+                
+                // Settings রিসেট
+                await setDoc(settingsDoc, { 
+                    resultsPublished: false,
+                    lastUpdated: new Date().toISOString(),
+                    resetBy: 'admin',
+                    totalCandidates: 39
+                }, { merge: true });
+                
+                // Local Storage ক্লিয়ার
+                clearLocalVoteStorage();
+                
+                alert('✅ সব ভোট এবং ডাটা সফলভাবে রিসেট হয়েছে!');
+                location.reload(); // পেজ রিলোড
+                
+            } catch (error) {
+                alert('❌ ভোট রিসেট করতে সমস্যা: ' + error.message);
+            }
+        }
+
+        window.viewResults = async function() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "votes"));
+                const votes = [];
+                querySnapshot.forEach((doc) => {
+                    votes.push(doc.data());
+                });
+
+                const voteCount = {};
+                candidates.forEach(candidate => {
+                    voteCount[candidate.name] = 0;
+                });
+
+                votes.forEach(vote => {
+                    if (vote.candidate1) voteCount[vote.candidate1]++;
+                    if (vote.candidate2) voteCount[vote.candidate2]++;
+                });
+
+                const sortedResults = Object.entries(voteCount)
+                    .sort(([,a], [,b]) => b - a);
+
+                const resultsContainer = document.getElementById('admin-results');
+                resultsContainer.innerHTML = `
+                    <h4>মোট ভোট: ${votes.length}</h4>
+                    ${sortedResults.map(([candidate, count]) => {
+                        const candidateInfo = candidates.find(c => c.name === candidate);
+                        return `
+                            <div style="padding: 10px; border-bottom: 1px solid #ddd; background: white; margin: 8px 0; border-radius: 8px; display: flex; align-items: center; gap: 15px;">
+                                <div class="candidate-marker" style="background: ${candidateInfo?.color || '#666'}; width: 35px; height: 35px; font-size: 14px;">
+                                    ${candidateInfo?.marker || '?'}
+                                </div>
+                                <div style="flex-grow: 1;">
+                                    <strong>${candidate}</strong>
+                                    <div style="color: #666; font-size: 14px;">মার্কা: ${candidateInfo?.marker || 'N/A'}</div>
+                                </div>
+                                <div style="font-weight: bold; color: #2c3e50; font-size: 18px;">${count}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                `;
+            } catch (error) {
+                alert('ফলাফল লোড করতে সমস্যা: ' + error.message);
+            }
+        }
+
+        window.clearLocalStorage = function() {
+            clearLocalVoteStorage();
+            alert('✅ লোকাল স্টোরেজ ক্লিয়ার হয়েছে!');
+            location.reload();
+        }
+
+        // Settings real-time listener
+        function setupSettingsListener() {
+            onSnapshot(settingsDoc, (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    resultsPublished = data.resultsPublished || false;
+                    console.log("Settings updated, resultsPublished:", resultsPublished);
+                    
+                    if (resultsPublished) {
+                        disableVoting();
+                    } else {
+                        enableVoting();
+                    }
+                    updateVoteButton();
+                }
+            });
+
+            // Votes real-time listener - যদি কেউ Admin Panel থেকে ভোট ডিলেট করে
+            onSnapshot(collection(db, "votes"), (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "removed") {
+                        // যদি ভোট ডিলেট হয়, Local Storage চেক করুন
+                        const localVote = localStorage.getItem('hasVoted');
+                        const localFingerprint = localStorage.getItem('voteFingerprint');
+                        
+                        if (localVote === 'true' && localFingerprint === change.doc.data().fingerprint) {
+                            console.log("Vote was deleted from Firebase, clearing local storage...");
+                            clearLocalVoteStorage();
+                            hasVoted = false;
+                            showVotingSection();
+                        }
+                    }
+                });
+            });
+        }
+
+        // ইভেন্ট লিসেনার
+        document.getElementById('voter-name').addEventListener('input', updateVoteButton);
+
+        // UI ফাংশন - FIXED VERSION
+        function showVotingSection() {
+            console.log("Showing voting section...");
+            document.getElementById('voting-section').style.display = 'block';
+            document.getElementById('after-vote').style.display = 'none';
+            
+            // প্রার্থীদের তালিকা দেখান
+            displayCandidates();
+            updateVoteButton();
+            
+            console.log("Voting section displayed");
+        }
+
+        function checkAdminAccess() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('admin') === 'true') {
+                document.getElementById('admin-section').style.display = 'block';
+            }
+        }
+
+        // পেজ লোড - FIXED VERSION
+        window.onload = async function() {
+            console.log("Page loaded, initializing...");
+            await checkResultsPublished();
+            setupSettingsListener();
+            await checkVoteStatus();
+            checkAdminAccess();
+            console.log("Initialization complete");
+        }
+    </script>
+</body>
+</html>
