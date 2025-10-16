@@ -6,7 +6,6 @@
     <title>Botany Suggestion Group - চতুর্থ নির্বাচন</title>
     <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
     <style>
-        /* আপনার CSS স্টাইলগুলো একই থাকবে */
         body {
             font-family: 'SolaimanLipi', Arial, sans-serif;
             max-width: 900px;
@@ -181,6 +180,14 @@
             color: #666;
             font-size: 18px;
         }
+        .security-alert {
+            background: linear-gradient(135deg, #fff3e0, #ffccbc);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 5px solid #ff9800;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -206,6 +213,12 @@
                     <li>✅ ভোট একবারই দিতে পারবেন</li>
                     <li>✅ ভোট দেওয়ার পর পরিবর্তন করা যাবে না</li>
                 </ul>
+            </div>
+
+            <!-- Security Alert -->
+            <div class="security-alert" id="security-alert" style="display: none;">
+                <strong>🔒 নিরাপত্তা সতর্কতা:</strong> 
+                <span id="security-message"></span>
             </div>
 
             <!-- Voting Closed Message -->
@@ -258,8 +271,12 @@
                     <button onclick="clearLocalStorage()" style="background: #FF9800; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer;">
                         লোকাল স্টোরেজ ক্লিয়ার
                     </button>
+                    <button onclick="enableStrictMode()" style="background: #9C27B0; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer;">
+                        স্ট্রিক্ট মোড চালু করুন
+                    </button>
                 </div>
                 <div id="admin-results" style="margin-top: 20px;"></div>
+                <div id="security-stats" style="margin-top: 20px; background: white; padding: 15px; border-radius: 10px;"></div>
             </div>
         </div>
 
@@ -300,7 +317,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // প্রার্থীদের লিস্ট with unique markers
+        // প্রার্থীদের লিস্ট with unique markers - সম্পূর্ণ তালিকা
         const candidates = [
             { id: 1, name: "Aoual Sheikh", marker: "🐕", color: "#e74c3c" },
             { id: 2, name: "Afrin Sultana", marker: "🦒", color: "#3498db" },
@@ -346,8 +363,10 @@
         const settingsDoc = doc(db, "settings", "election");
         let selectedCandidates = [];
         let deviceFingerprint = '';
+        let userIP = '';
         let hasVoted = false;
         let resultsPublished = false;
+        let strictMode = false;
 
         // ফলাফল প্রকাশিত কিনা চেক করা
         async function checkResultsPublished() {
@@ -399,18 +418,6 @@
         // ar.html পেজে রিডাইরেক্ট
         window.viewResultsPage = function() {
             window.location.href = 'ar.html';
-        }
-
-        // ডিভাইস ফিঙ্গারপ্রিন্ট জেনারেট করা
-        async function generateFingerprint() {
-            try {
-                const fp = await FingerprintJS.load();
-                const result = await fp.get();
-                return result.visitorId;
-            } catch (error) {
-                console.error('ফিঙ্গারপ্রিন্ট Error:', error);
-                return 'device_' + Math.random().toString(36).substr(2, 9);
-            }
         }
 
         // প্রার্থীদের লিস্ট দেখানো - FIXED VERSION
@@ -535,51 +542,166 @@
                 return;
             }
             
+            // স্ট্রিক্ট মোড সতর্কতা
+            if (strictMode) {
+                voteBtn.title = 'স্ট্রিক্ট মোড সক্রিয়: একই IP বা নামে ভোট দেওয়া যাবে না';
+            }
+            
             // বাটন এনাবল/ডিসেবল
             const canVote = selectedCandidates.length === 2 && voterName !== '' && !hasVoted;
             voteBtn.disabled = !canVote;
         }
 
-        // ভোট জমা দেওয়া
+        // উন্নত ফিঙ্গারপ্রিন্ট জেনারেটর
+        async function generateAdvancedFingerprint() {
+            try {
+                const fp = await FingerprintJS.load();
+                const result = await fp.get();
+                
+                // অতিরিক্ত ডিভাইস তথ্য সংগ্রহ
+                const advancedComponents = {
+                    visitorId: result.visitorId,
+                    platform: navigator.platform,
+                    language: navigator.language,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    screenResolution: `${screen.width}x${screen.height}`,
+                    colorDepth: screen.colorDepth,
+                    hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
+                    deviceMemory: navigator.deviceMemory || 'unknown',
+                    userAgent: navigator.userAgent
+                };
+                
+                // হ্যাশ জেনারেট করা
+                const fingerprintString = JSON.stringify(advancedComponents);
+                let hash = 0;
+                for (let i = 0; i < fingerprintString.length; i++) {
+                    const char = fingerprintString.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                
+                return `fp_${Math.abs(hash).toString(36)}_${advancedComponents.visitorId}`;
+            } catch (error) {
+                console.error('ফিঙ্গারপ্রিন্ট Error:', error);
+                return 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            }
+        }
+
+        // উন্নত IP সংগ্রহ
+        async function getAdvancedIP() {
+            try {
+                // Multiple IP API services for redundancy
+                const services = [
+                    'https://api.ipify.org?format=json',
+                    'https://api64.ipify.org?format=json',
+                    'https://ipinfo.io/json'
+                ];
+                
+                for (const service of services) {
+                    try {
+                        const response = await fetch(service, { timeout: 5000 });
+                        if (response.ok) {
+                            const data = await response.json();
+                            const ip = data.ip || data.ip_address;
+                            if (ip) return ip;
+                        }
+                    } catch (e) {
+                        console.log(`IP service ${service} failed:`, e);
+                    }
+                }
+                return 'unknown_ip';
+            } catch (error) {
+                console.error('IP Error:', error);
+                return 'error_ip';
+            }
+        }
+
+        // উন্নত ভোটার ভ্যালিডেশন
+        async function validateVoter(voterName, fingerprint, ip) {
+            try {
+                // ১। নাম ভ্যালিডেশন
+                if (!voterName || voterName.trim().length < 2) {
+                    return { valid: false, reason: 'অবৈধ নাম' };
+                }
+
+                // ২। ফিঙ্গারপ্রিন্ট চেক
+                const fingerprintQuery = query(collection(db, "votes"), where("fingerprint", "==", fingerprint));
+                const fingerprintSnapshot = await getDocs(fingerprintQuery);
+                
+                if (!fingerprintSnapshot.empty) {
+                    return { valid: false, reason: 'এই ডিভাইস থেকে ইতিমধ্যে ভোট দেওয়া হয়েছে' };
+                }
+
+                // ৩। IP চেক (যদি স্ট্রিক্ট মোড চালু থাকে)
+                if (strictMode) {
+                    const ipQuery = query(collection(db, "votes"), where("ipAddress", "==", ip));
+                    const ipSnapshot = await getDocs(ipQuery);
+                    
+                    if (!ipSnapshot.empty) {
+                        return { valid: false, reason: 'এই IP থেকে ইতিমধ্যে ভোট দেওয়া হয়েছে' };
+                    }
+                }
+
+                // ৪। নাম চেক (যদি স্ট্রিক্ট মোড চালু থাকে)
+                if (strictMode) {
+                    const nameQuery = query(collection(db, "votes"), where("voterName", "==", voterName.trim()));
+                    const nameSnapshot = await getDocs(nameQuery);
+                    
+                    if (!nameSnapshot.empty) {
+                        return { valid: false, reason: 'এই নামে ইতিমধ্যে ভোট দেওয়া হয়েছে' };
+                    }
+                }
+
+                // ৫। রেট লিমিটিং চেক
+                const recentVotesQuery = query(
+                    collection(db, "votes"), 
+                    where("timestamp", ">", new Date(Date.now() - 5 * 60 * 1000)) // শেষ ৫ মিনিট
+                );
+                const recentVotesSnapshot = await getDocs(recentVotesQuery);
+                
+                if (recentVotesSnapshot.size > 10) { // ৫ মিনিটে ১০টির বেশি ভোট
+                    return { valid: false, reason: 'অনেক ভোট জমা পড়ছে, কিছুক্ষণ পর চেষ্টা করুন' };
+                }
+
+                return { valid: true };
+            } catch (error) {
+                console.error('ভোটার ভ্যালিডেশন Error:', error);
+                return { valid: false, reason: 'সিস্টেম Error: ' + error.message };
+            }
+        }
+
+        // উন্নত ভোট জমা
         window.submitVote = async function() {
             const voterName = document.getElementById('voter-name').value.trim();
             
             // ফলাফল প্রকাশিত হলে ভোট বন্ধ
             if (resultsPublished) {
-                alert('ফলাফল প্রকাশিত হয়েছে। এখন আর ভোট দেওয়া যাবে না।');
+                showSecurityAlert('ফলাফল প্রকাশিত হয়েছে। এখন আর ভোট দেওয়া যাবে না।');
                 return;
             }
             
             // ভ্যালিডেশন
             if (voterName === '') {
-                alert('দয়া করে আপনার নাম লিখুন');
+                showSecurityAlert('দয়া করে আপনার নাম লিখুন');
                 document.getElementById('voter-name').focus();
                 return;
             }
             
             if (selectedCandidates.length !== 2) {
-                alert('দয়া করে ঠিক ২ জন প্রার্থী নির্বাচন করুন');
+                showSecurityAlert('দয়া করে ঠিক ২ জন প্রার্থী নির্বাচন করুন');
                 return;
             }
 
             if (hasVoted) {
-                alert('আপনি ইতিমধ্যে ভোট দিয়েছেন!');
+                showSecurityAlert('আপনি ইতিমধ্যে ভোট দিয়েছেন!');
                 return;
             }
 
             try {
-                // ডিভাইস ফিঙ্গারপ্রিন্ট
-                const fingerprint = await generateFingerprint();
-                deviceFingerprint = fingerprint;
-
-                // Firestore-এ চেক করা
-                const votesQuery = query(collection(db, "votes"), where("fingerprint", "==", fingerprint));
-                const querySnapshot = await getDocs(votesQuery);
-                
-                if (!querySnapshot.empty) {
-                    alert('এই ডিভাইস থেকে ইতিমধ্যে ভোট দেওয়া হয়েছে!');
-                    hasVoted = true;
-                    updateVoteButton();
+                // ভোটার ভ্যালিডেশন
+                const validation = await validateVoter(voterName, deviceFingerprint, userIP);
+                if (!validation.valid) {
+                    showSecurityAlert(validation.reason);
                     return;
                 }
 
@@ -590,88 +712,47 @@
                     candidate1_marker: selectedCandidates[0].marker,
                     candidate2: selectedCandidates[1].name,
                     candidate2_marker: selectedCandidates[1].marker,
-                    fingerprint: fingerprint,
-                    timestamp: new Date(),
+                    fingerprint: deviceFingerprint,
+                    ipAddress: userIP,
                     userAgent: navigator.userAgent,
-                    ipAddress: await getIPAddress()
+                    timestamp: new Date(),
+                    strictMode: strictMode,
+                    securityLevel: 'high'
                 };
 
                 // Firestore-এ সেভ
                 await addDoc(collection(db, "votes"), voteData);
                 
-                // লোকাল স্টোরেজ
-                localStorage.setItem('hasVoted', 'true');
-                localStorage.setItem('voteFingerprint', fingerprint);
-                localStorage.setItem('voteTime', new Date().toISOString());
-                localStorage.setItem('voterName', voterName);
+                // উন্নত লোকাল স্টোরেজ
+                const voteRecord = {
+                    hasVoted: true,
+                    fingerprint: deviceFingerprint,
+                    ip: userIP,
+                    timestamp: new Date().toISOString(),
+                    voterName: voterName,
+                    securityHash: await generateSecurityHash(voteData)
+                };
+                localStorage.setItem('voteRecord', JSON.stringify(voteRecord));
                 
                 hasVoted = true;
                 showAfterVote(voterName);
                 
             } catch (error) {
                 console.error('ভোট Error:', error);
-                alert('ভোট জমা দেওয়ার সময় সমস্যা হয়েছে: ' + error.message);
+                showSecurityAlert('ভোট জমা দেওয়ার সময় সমস্যা হয়েছে: ' + error.message);
             }
         }
 
-        // IP অ্যাড্রেস
-        async function getIPAddress() {
-            try {
-                const response = await fetch('https://api.ipify.org?format=json');
-                const data = await response.json();
-                return data.ip;
-            } catch (error) {
-                return 'unknown';
+        // সিকিউরিটি হ্যাশ জেনারেটর
+        async function generateSecurityHash(data) {
+            const str = JSON.stringify(data);
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
             }
-        }
-
-        // ভোট স্ট্যাটাস চেক - FIXED VERSION
-        async function checkVoteStatus() {
-            try {
-                const fingerprint = await generateFingerprint();
-                deviceFingerprint = fingerprint;
-                
-                // প্রথমে Firebase থেকে চেক করুন
-                const votesQuery = query(collection(db, "votes"), where("fingerprint", "==", fingerprint));
-                const querySnapshot = await getDocs(votesQuery);
-                
-                if (!querySnapshot.empty) {
-                    // Firebase-এ ভোট আছে
-                    hasVoted = true;
-                    localStorage.setItem('hasVoted', 'true');
-                    const voteData = querySnapshot.docs[0].data();
-                    showAfterVote(voteData.voterName);
-                } else {
-                    // Firebase-এ ভোট নেই, কিন্তু Local Storage-এ আছে
-                    const localVote = localStorage.getItem('hasVoted');
-                    if (localVote === 'true') {
-                        // Local Storage এবং Firebase不一致 - Local Storage ক্লিয়ার করুন
-                        console.log("Clearing inconsistent local storage...");
-                        clearLocalVoteStorage();
-                    }
-                    hasVoted = false;
-                    showVotingSection();
-                }
-            } catch (error) {
-                console.error('Status check error:', error);
-                // Error হলে Local Storage চেক করুন
-                const localVote = localStorage.getItem('hasVoted');
-                if (localVote === 'true') {
-                    hasVoted = true;
-                    const savedName = localStorage.getItem('voterName') || 'ভোটার';
-                    showAfterVote(savedName);
-                } else {
-                    showVotingSection();
-                }
-            }
-        }
-
-        // Local Storage ক্লিয়ার করার ফাংশন
-        function clearLocalVoteStorage() {
-            localStorage.removeItem('hasVoted');
-            localStorage.removeItem('voteFingerprint');
-            localStorage.removeItem('voteTime');
-            localStorage.removeItem('voterName');
+            return Math.abs(hash).toString(36);
         }
 
         // ভোট দেওয়ার পরের ভিউ
@@ -698,6 +779,196 @@
             `;
         }
 
+        // উন্নত ভোট স্ট্যাটাস চেক
+        async function checkAdvancedVoteStatus() {
+            try {
+                // ১। লোকাল স্টোরেজ চেক
+                const localRecord = localStorage.getItem('voteRecord');
+                if (localRecord) {
+                    const record = JSON.parse(localRecord);
+                    
+                    // ২। Firebase-এ ভেরিফাই
+                    const votesQuery = query(
+                        collection(db, "votes"), 
+                        where("fingerprint", "==", record.fingerprint)
+                    );
+                    const querySnapshot = await getDocs(votesQuery);
+                    
+                    if (!querySnapshot.empty) {
+                        // ভোট আছে
+                        hasVoted = true;
+                        const voteData = querySnapshot.docs[0].data();
+                        showAfterVote(voteData.voterName);
+                        return;
+                    } else {
+                        // Firebase-এ ভোট নেই কিন্তু লোকাল স্টোরেজে আছে - ক্লিয়ার করুন
+                        localStorage.removeItem('voteRecord');
+                    }
+                }
+
+                // ৩। ফিঙ্গারপ্রিন্ট দিয়ে চেক
+                const fingerprintQuery = query(
+                    collection(db, "votes"), 
+                    where("fingerprint", "==", deviceFingerprint)
+                );
+                const fingerprintSnapshot = await getDocs(fingerprintQuery);
+                
+                if (!fingerprintSnapshot.empty) {
+                    hasVoted = true;
+                    const voteData = fingerprintSnapshot.docs[0].data();
+                    showAfterVote(voteData.voterName);
+                    return;
+                }
+
+                // ৪। IP দিয়ে চেক (যদি স্ট্রিক্ট মোড চালু থাকে)
+                if (strictMode && userIP !== 'unknown_ip') {
+                    const ipQuery = query(
+                        collection(db, "votes"), 
+                        where("ipAddress", "==", userIP)
+                    );
+                    const ipSnapshot = await getDocs(ipQuery);
+                    
+                    if (!ipSnapshot.empty) {
+                        hasVoted = true;
+                        showSecurityAlert('এই IP থেকে ইতিমধ্যে ভোট দেওয়া হয়েছে');
+                        return;
+                    }
+                }
+
+                // ভোট দেওয়া যায়
+                hasVoted = false;
+                showVotingSection();
+                
+            } catch (error) {
+                console.error('ভোট স্ট্যাটাস চেক Error:', error);
+                // Error হলে শুধু লোকাল স্টোরেজ চেক করুন
+                const localRecord = localStorage.getItem('voteRecord');
+                if (localRecord) {
+                    const record = JSON.parse(localRecord);
+                    hasVoted = true;
+                    showAfterVote(record.voterName);
+                } else {
+                    showVotingSection();
+                }
+            }
+        }
+
+        // UI ফাংশন
+        function showVotingSection() {
+            console.log("Showing voting section...");
+            document.getElementById('voting-section').style.display = 'block';
+            document.getElementById('after-vote').style.display = 'none';
+            
+            // প্রার্থীদের তালিকা দেখান - এই লাইনটি যোগ করুন
+            displayCandidates();
+            updateVoteButton();
+            
+            console.log("Voting section displayed");
+        }
+
+        // সিকিউরিটি এলার্ট প্রদর্শন
+        function showSecurityAlert(message) {
+            const alertDiv = document.getElementById('security-alert');
+            const messageSpan = document.getElementById('security-message');
+            
+            messageSpan.textContent = message;
+            alertDiv.style.display = 'block';
+            
+            // ৫ সেকেন্ড পর স্বয়ংক্রিয়ভাবে হাইড
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Admin ফাংশন - স্ট্রিক্ট মোড
+        window.enableStrictMode = async function() {
+            if (!confirm('স্ট্রিক্ট মোড চালু করলে:\n\n• একই IP থেকে একাধিক ভোট বন্ধ হবে\n• একই নামে একাধিক ভোট বন্ধ হবে\n• নিরাপত্তা সর্বোচ্চ পর্যায়ে উঠবে\n\nআপনি কি নিশ্চিত?')) {
+                return;
+            }
+
+            try {
+                await setDoc(settingsDoc, { 
+                    strictMode: true,
+                    lastUpdated: new Date().toISOString(),
+                    securityLevel: 'maximum'
+                }, { merge: true });
+                
+                strictMode = true;
+                alert('✅ স্ট্রিক্ট মোড সফলভাবে চালু হয়েছে!');
+                updateSecurityStats();
+                
+            } catch (error) {
+                alert('❌ স্ট্রিক্ট মোড চালু করতে সমস্যা: ' + error.message);
+            }
+        }
+
+        // নিরাপত্তা পরিসংখ্যান
+        async function updateSecurityStats() {
+            try {
+                const votesSnapshot = await getDocs(collection(db, "votes"));
+                const votes = votesSnapshot.docs.map(doc => doc.data());
+                
+                const stats = {
+                    totalVotes: votes.length,
+                    uniqueIPs: new Set(votes.map(v => v.ipAddress)).size,
+                    uniqueFingerprints: new Set(votes.map(v => v.fingerprint)).size,
+                    uniqueNames: new Set(votes.map(v => v.voterName)).size,
+                    suspiciousActivity: votes.filter(v => 
+                        v.ipAddress === 'unknown_ip' || 
+                        v.fingerprint.includes('error')
+                    ).length
+                };
+                
+                const statsContainer = document.getElementById('security-stats');
+                statsContainer.innerHTML = `
+                    <h4>🔒 নিরাপত্তা পরিসংখ্যান:</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>মোট ভোট: <strong>${stats.totalVotes}</strong></div>
+                        <div>ইউনিক IP: <strong>${stats.uniqueIPs}</strong></div>
+                        <div>ইউনিক ডিভাইস: <strong>${stats.uniqueFingerprints}</strong></div>
+                        <div>ইউনিক নাম: <strong>${stats.uniqueNames}</strong></div>
+                        <div>সন্দেহজনক কার্যকলাপ: <strong style="color: ${stats.suspiciousActivity > 0 ? '#f44336' : '#4CAF50'}">${stats.suspiciousActivity}</strong></div>
+                        <div>স্ট্রিক্ট মোড: <strong style="color: ${strictMode ? '#4CAF50' : '#ff9800'}">${strictMode ? 'চালু' : 'বন্ধ'}</strong></div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('স্ট্যাটস Error:', error);
+            }
+        }
+
+        // Settings real-time listener
+        function setupSettingsListener() {
+            onSnapshot(settingsDoc, (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    resultsPublished = data.resultsPublished || false;
+                    strictMode = data.strictMode || false;
+                    
+                    console.log("Settings updated:", { resultsPublished, strictMode });
+                    
+                    if (resultsPublished) {
+                        disableVoting();
+                    } else {
+                        enableVoting();
+                    }
+                    updateVoteButton();
+                    
+                    if (document.getElementById('admin-section').style.display !== 'none') {
+                        updateSecurityStats();
+                    }
+                }
+            });
+        }
+
+        // Admin access check
+        function checkAdminAccess() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('admin') === 'true') {
+                document.getElementById('admin-section').style.display = 'block';
+                updateSecurityStats();
+            }
+        }
+
         // Admin ফাংশনগুলো
         window.resetAllVotes = async function() {
             if (!confirm('⚠️ আপনি কি নিশ্চিত যে সব ভোট ডিলেট করতে চান? এটি রিভার্সিবল নয়!')) {
@@ -720,13 +991,14 @@
                 // Settings রিসেট
                 await setDoc(settingsDoc, { 
                     resultsPublished: false,
+                    strictMode: false,
                     lastUpdated: new Date().toISOString(),
                     resetBy: 'admin',
                     totalCandidates: 39
                 }, { merge: true });
                 
                 // Local Storage ক্লিয়ার
-                clearLocalVoteStorage();
+                localStorage.removeItem('voteRecord');
                 
                 alert('✅ সব ভোট এবং ডাটা সফলভাবে রিসেট হয়েছে!');
                 location.reload(); // পেজ রিলোড
@@ -782,78 +1054,31 @@
         }
 
         window.clearLocalStorage = function() {
-            clearLocalVoteStorage();
+            localStorage.removeItem('voteRecord');
             alert('✅ লোকাল স্টোরেজ ক্লিয়ার হয়েছে!');
             location.reload();
-        }
-
-        // Settings real-time listener
-        function setupSettingsListener() {
-            onSnapshot(settingsDoc, (doc) => {
-                if (doc.exists()) {
-                    const data = doc.data();
-                    resultsPublished = data.resultsPublished || false;
-                    console.log("Settings updated, resultsPublished:", resultsPublished);
-                    
-                    if (resultsPublished) {
-                        disableVoting();
-                    } else {
-                        enableVoting();
-                    }
-                    updateVoteButton();
-                }
-            });
-
-            // Votes real-time listener - যদি কেউ Admin Panel থেকে ভোট ডিলেট করে
-            onSnapshot(collection(db, "votes"), (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === "removed") {
-                        // যদি ভোট ডিলেট হয়, Local Storage চেক করুন
-                        const localVote = localStorage.getItem('hasVoted');
-                        const localFingerprint = localStorage.getItem('voteFingerprint');
-                        
-                        if (localVote === 'true' && localFingerprint === change.doc.data().fingerprint) {
-                            console.log("Vote was deleted from Firebase, clearing local storage...");
-                            clearLocalVoteStorage();
-                            hasVoted = false;
-                            showVotingSection();
-                        }
-                    }
-                });
-            });
         }
 
         // ইভেন্ট লিসেনার
         document.getElementById('voter-name').addEventListener('input', updateVoteButton);
 
-        // UI ফাংশন - FIXED VERSION
-        function showVotingSection() {
-            console.log("Showing voting section...");
-            document.getElementById('voting-section').style.display = 'block';
-            document.getElementById('after-vote').style.display = 'none';
-            
-            // প্রার্থীদের তালিকা দেখান
-            displayCandidates();
-            updateVoteButton();
-            
-            console.log("Voting section displayed");
-        }
-
-        function checkAdminAccess() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('admin') === 'true') {
-                document.getElementById('admin-section').style.display = 'block';
-            }
-        }
-
-        // পেজ লোড - FIXED VERSION
+        // ইনিশিয়ালাইজেশন
         window.onload = async function() {
-            console.log("Page loaded, initializing...");
+            console.log("Page loaded, initializing advanced security...");
+            
+            // ডিভাইস ফিঙ্গারপ্রিন্ট এবং IP সংগ্রহ
+            deviceFingerprint = await generateAdvancedFingerprint();
+            userIP = await getAdvancedIP();
+            
+            console.log("Device fingerprint:", deviceFingerprint);
+            console.log("User IP:", userIP);
+            
             await checkResultsPublished();
             setupSettingsListener();
-            await checkVoteStatus();
+            await checkAdvancedVoteStatus();
             checkAdminAccess();
-            console.log("Initialization complete");
+            
+            console.log("Advanced security initialization complete");
         }
     </script>
 </body>
