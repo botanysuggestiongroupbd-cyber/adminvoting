@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botany Election - Public Results</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'SolaimanLipi', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #3498db;
+        }
+        .stat-card.winner {
+            border-left-color: #27ae60;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .stat-label {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+        .voters-list {
+            max-height: 600px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .voter-item {
+            background: white;
+            padding: 15px 20px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .voter-name {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .timestamp {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        .results-grid {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .candidate-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #3498db;
+            transition: all 0.3s;
+        }
+        .candidate-card.winner {
+            border-left-color: #27ae60;
+            background: linear-gradient(135deg, #fff, #e8f5e8);
+        }
+        .candidate-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        .candidate-marker {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 1.2em;
+            flex-shrink: 0;
+        }
+        .candidate-info {
+            flex-grow: 1;
+        }
+        .candidate-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .candidate-marker-text {
+            color: #7f8c8d;
+            font-size: 1em;
+        }
+        .vote-stats {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .vote-count {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .vote-label {
+            color: #7f8c8d;
+            font-size: 1em;
+        }
+        .progress-container {
+            flex-grow: 1;
+        }
+        .progress-bar {
+            height: 15px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            border-radius: 10px;
+            transition: width 1s ease;
+        }
+        .progress-fill.high {
+            background: linear-gradient(90deg, #27ae60, #2ecc71);
+        }
+        .percentage {
+            text-align: right;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 0.9em;
+        }
+        .rank-badge {
+            background: #e74c3c;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .rank-1 { background: linear-gradient(135deg, #f1c40f, #f39c12); }
+        .rank-2 { background: linear-gradient(135deg, #95a5a6, #7f8c8d); }
+        .rank-3 { background: linear-gradient(135deg, #d35400, #e67e22); }
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .refresh-info {
+            text-align: center;
+            color: #7f8c8d;
+            margin: 15px 0;
+            font-style: italic;
+        }
+        .message {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        .results-hidden {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        @media (max-width: 768px) {
+            .stats-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .candidate-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .vote-stats {
+                flex-direction: column;
+                text-align: center;
+            }
+            .voter-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🏆 Botany Election</h1>
+            <p>বোটানি সাজেশন গ্রুপ বাংলাদেশ - বিশেষ নির্বাচন</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Statistics -->
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <div class="stat-label">মোট ভোট</div>
+                    <div class="stat-number" id="total-votes">0</div>
+                    <div class="stat-label">টি ভোট</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">মোট প্রার্থী</div>
+                    <div class="stat-number">39</div>
+                    <div class="stat-label">জন</div>
+                </div>
+                <div class="stat-card winner" id="winner-card" style="display: none;">
+                    <div class="stat-label">🏆 বিজয়ী</div>
+                    <div class="stat-number" id="winner-name">-</div>
+                    <div class="stat-label" id="winner-votes">- ভোট</div>
+                </div>
+            </div>
+
+            <!-- Results Hidden Message -->
+            <div id="results-hidden-message" class="results-hidden">
+                <h3>ফলাফল এখনও প্রকাশিত হয়নি</h3>
+                <p>এডমিন কর্তৃক ফলাফল প্রকাশের পর এখানে প্রার্থীদের ভোট সংখ্যা দেখা যাবে</p>
+            </div>
+
+            <!-- Voters List (Default View) -->
+            <div id="voters-view">
+                <h2 style="margin-bottom: 15px; color: #2c3e50;">ভোটারদের তালিকা</h2>
+                <div class="refresh-info">
+                    তালিকা স্বয়ংক্রিয়ভাবে আপডেট হয় - প্রতি ৩০ সেকেন্ডে
+                </div>
+                <div class="voters-list" id="voters-container">
+                    <!-- ভোটারদের তালিকা এখানে লোড হবে -->
+                </div>
+            </div>
+
+            <!-- Results View (Hidden by Default) -->
+            <div id="results-view" style="display: none;">
+                <h2 style="margin-bottom: 15px; color: #2c3e50;">প্রার্থীদের ভোট ফলাফল</h2>
+                <div class="refresh-info">
+                    ফলাফল স্বয়ংক্রিয়ভাবে আপডেট হয় - প্রতি ৩০ সেকেন্ডে
+                </div>
+                <div class="results-grid" id="results-container">
+                    <!-- ফলাফল এখানে লোড হবে -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Botany Suggestion Group Bangladesh - Special Election 2023</p>
+            <p>© সর্বস্বত্ব সংরক্ষিত - বোটানি সাজেশন গ্রুপ বাংলাদেশ</p>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyChDeqEPatoWTUPoZpcYOSXcnAuoVJsV-c",
+            authDomain: "apps-login-page.firebaseapp.com",
+            projectId: "apps-login-page",
+            storageBucket: "apps-login-page.firebasestorage.app",
+            messagingSenderId: "601656721972",
+            appId: "1:601656721972:web:20ce6efffc82b2e0b68061",
+            measurementId: "G-RPPBB0C7BQ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // প্রার্থীদের লিস্ট
+        const candidates = [
+            { id: 1, name: "Aoual Sheikh", marker: "🐕", color: "#e74c3c" },
+            { id: 2, name: "Afrin Sultana", marker: "🦒", color: "#3498db" },
+            { id: 3, name: "Amio Biswas", marker: "🐓", color: "#2ecc71" },
+            { id: 4, name: "Amrita Rani", marker: "🦚", color: "#f39c12" },
+            { id: 5, name: "Ashik Khan", marker: "🐋", color: "#9b59b6" },
+            { id: 6, name: "Fahmida Sultana", marker: "🐬", color: "#1abc9c" },
+            { id: 7, name: "Esrat Jahan Emi", marker: "🪳", color: "#d35400" },
+            { id: 8, name: "Fazle", marker: "🪰", color: "#c0392b" },
+            { id: 9, name: "Sabbir Hosain", marker: "🦟", color: "#16a085" },
+            { id: 10, name: "Mahmuda Akter Sumee", marker: "🕷️", color: "#8e44ad" },
+            { id: 11, name: "Itz Amirul", marker: "🦖", color: "#27ae60" },
+            { id: 12, name: "Kawsar Alam", marker: "🦉", color: "#e67e22" },
+            { id: 13, name: "Kazi Nazmul Hasan", marker: "🐥", color: "#2980b9" },
+            { id: 14, name: "Lamis Shikder", marker: "🪶", color: "#f1c40f" },
+            { id: 15, name: "Md Joni Islam", marker: "🐘", color: "#e91e63" },
+            { id: 16, name: "Md Samiul Alam", marker: "🐙", color: "#00bcd4" },
+            { id: 17, name: "Misbah Akter Mithila", marker: "🐱", color: "#795548" },
+            { id: 18, name: "Tanvir Hassan", marker: "🦓", color: "#607d8b" },
+            { id: 19, name: "Mohon Talukder", marker: "🦌", color: "#3f51b5" },
+            { id: 20, name: "Moriam Mim", marker: "🦩", color: "#009688" },
+            { id: 21, name: "Nasrin Akter Tarin", marker: "🌵", color: "#ff5722" },
+            { id: 22, name: "Priti Das", marker: "🌹", color: "#673ab7" },
+            { id: 23, name: "Rayhan Hossain Hridoy", marker: "💐", color: "#ff9800" },
+            { id: 24, name: "Riyad Hossain", marker: "🦭", color: "#2196f3" },
+            { id: 25, name: "Sadia Sultana", marker: "🐌", color: "#4caf50" },
+            { id: 26, name: "Saifa Ahmed", marker: "🐝", color: "#ffeb3b" },
+            { id: 27, name: "Sakil Khan", marker: "🌻", color: "#9c27b0" },
+            { id: 28, name: "Sanjida Khan Koli", marker: "🐜", color: "#00bcd4" },
+            { id: 29, name: "Sakila Simi", marker: "🦋", color: "#ffc107" },
+            { id: 30, name: "Shojeb Rana", marker: "🦅", color: "#8bc34a" },
+            { id: 31, name: "Sujoy Sarker", marker: "🦜", color: "#e91e63" },
+            { id: 32, name: "Tanjina Akter", marker: "🐴", color: "#3f51b5" },
+            { id: 33, name: "Tasrin Akter Bristy", marker: "🥥", color: "#009688" },
+            { id: 34, name: "Tayba Haider Riya", marker: "🍅", color: "#ff5722" },
+            { id: 35, name: "Md Roman Molla", marker: "🌶️", color: "#795548" },
+            { id: 36, name: "Md Sujon Shikder", marker: "🌽", color: "#607d8b" },
+            { id: 37, name: "Sadek Mia", marker: "🍉", color: "#f44336" },
+            { id: 38, name: "Md Rana Ahmed", marker: "🍄", color: "#4caf50" },
+            { id: 39, name: "Md Saidul Haque", marker: "🥭", color: "#2196f3" }
+        ];
+
+        // Firebase settings document reference
+        const settingsDoc = doc(db, "settings", "election");
+
+        // Load public view on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPublicView();
+        });
+
+        // Listen for settings changes
+        onSnapshot(settingsDoc, (doc) => {
+            if (doc.exists()) {
+                const settings = doc.data();
+                toggleResultsView(settings.resultsPublished || false);
+            }
+        });
+
+        // Toggle between voters list and results view
+        function toggleResultsView(showResults) {
+            const votersView = document.getElementById('voters-view');
+            const resultsView = document.getElementById('results-view');
+            const resultsHiddenMsg = document.getElementById('results-hidden-message');
+            const winnerCard = document.getElementById('winner-card');
+
+            if (showResults) {
+                votersView.style.display = 'none';
+                resultsView.style.display = 'block';
+                resultsHiddenMsg.style.display = 'none';
+                winnerCard.style.display = 'block';
+                loadResults();
+            } else {
+                votersView.style.display = 'block';
+                resultsView.style.display = 'none';
+                resultsHiddenMsg.style.display = 'block';
+                winnerCard.style.display = 'none';
+                loadVoters();
+            }
+        }
+
+        // Load public view
+        async function loadPublicView() {
+            try {
+                const docSnap = await getDoc(settingsDoc);
+                const settings = docSnap.exists() ? docSnap.data() : { resultsPublished: false };
+                toggleResultsView(settings.resultsPublished);
+            } catch (error) {
+                console.error('Error loading public view:', error);
+                // Default to voters view
+                toggleResultsView(false);
+            }
+        }
+
+        // Load voters list
+        async function loadVoters() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "votes"));
+                const votes = [];
+                
+                querySnapshot.forEach((doc) => {
+                    votes.push(doc.data());
+                });
+
+                updateStatistics(votes);
+                displayVotersList(votes);
+
+            } catch (error) {
+                console.error('Error loading voters:', error);
+                document.getElementById('voters-container').innerHTML = `
+                    <div class="message">
+                        <h3>ভোটারদের তালিকা লোড করতে সমস্যা হচ্ছে</h3>
+                        <p>দয়া করে কিছুক্ষণ পরে আবার চেষ্টা করুন</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load results
+        async function loadResults() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "votes"));
+                const votes = [];
+                
+                querySnapshot.forEach((doc) => {
+                    votes.push(doc.data());
+                });
+
+                updateStatistics(votes);
+                displayResults(votes);
+
+            } catch (error) {
+                console.error('Error loading results:', error);
+                document.getElementById('results-container').innerHTML = `
+                    <div class="message">
+                        <h3>ফলাফল লোড করতে সমস্যা হচ্ছে</h3>
+                        <p>দয়া করে কিছুক্ষণ পরে আবার চেষ্টা করুন</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Update statistics
+        function updateStatistics(votes) {
+            document.getElementById('total-votes').textContent = votes.length;
+
+            // Only calculate winner if results are published
+            const settingsDocSnap = getDoc(settingsDoc);
+            settingsDocSnap.then((doc) => {
+                if (doc.exists() && doc.data().resultsPublished) {
+                    const voteCount = {};
+                    candidates.forEach(candidate => {
+                        voteCount[candidate.name] = 0;
+                    });
+
+                    votes.forEach(vote => {
+                        if (vote.candidate1) voteCount[vote.candidate1]++;
+                        if (vote.candidate2) voteCount[vote.candidate2]++;
+                    });
+
+                    const votesArray = Object.values(voteCount).filter(v => v > 0);
+                    
+                    if (votesArray.length > 0) {
+                        const winner = Object.entries(voteCount).sort(([,a], [,b]) => b - a)[0];
+                        document.getElementById('winner-name').textContent = winner[0];
+                        document.getElementById('winner-votes').textContent = winner[1] + ' ভোট';
+                    }
+                }
+            });
+        }
+
+        // Display voters list
+        function displayVotersList(votes) {
+            const container = document.getElementById('voters-container');
+            const sortedVotes = votes.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            if (sortedVotes.length === 0) {
+                container.innerHTML = `
+                    <div class="message">
+                        <h3>এখনও কোন ভোট দেওয়া হয়নি</h3>
+                        <p>ভোটারদের তালিকা শীঘ্রই দেখা যাবে</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = sortedVotes.map(vote => {
+                const time = new Date(vote.timestamp).toLocaleString('bn-BD');
+                return `
+                    <div class="voter-item">
+                        <div class="voter-name">${vote.voterName}</div>
+                        <div class="timestamp">${time}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Display results
+        function displayResults(votes) {
+            const voteCount = {};
+            candidates.forEach(candidate => {
+                voteCount[candidate.name] = 0;
+            });
+
+            votes.forEach(vote => {
+                if (vote.candidate1) voteCount[vote.candidate1]++;
+                if (vote.candidate2) voteCount[vote.candidate2]++;
+            });
+
+            const sortedResults = Object.entries(voteCount)
+                .sort(([,a], [,b]) => b - a);
+
+            const maxVotes = Math.max(...Object.values(voteCount));
+            const container = document.getElementById('results-container');
+            
+            if (sortedResults.length === 0 || maxVotes === 0) {
+                container.innerHTML = `
+                    <div class="message">
+                        <h3>এখনও কোন ভোট দেওয়া হয়নি</h3>
+                        <p>ফলাফল শীঘ্রই দেখা যাবে</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = sortedResults.map(([candidateName, count], index) => {
+                const candidate = candidates.find(c => c.name === candidateName);
+                const percentage = maxVotes > 0 ? (count / maxVotes) * 100 : 0;
+                const isWinner = index === 0 && count > 0;
+                
+                return `
+                    <div class="candidate-card ${isWinner ? 'winner' : ''}">
+                        <div class="candidate-header">
+                            <div class="candidate-marker" style="background: ${candidate?.color || '#666'}">
+                                ${candidate?.marker || '?'}
+                            </div>
+                            <div class="candidate-info">
+                                <div class="candidate-name">${candidateName}</div>
+                                <div class="candidate-marker-text">মার্কা: ${candidate?.marker || 'N/A'}</div>
+                            </div>
+                            <div class="rank-badge rank-${index + 1}">${index + 1}</div>
+                        </div>
+                        <div class="vote-stats">
+                            <div>
+                                <div class="vote-count">${count}</div>
+                                <div class="vote-label">ভোট</div>
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill ${percentage > 50 ? 'high' : ''}" 
+                                         style="width: ${percentage}%"></div>
+                                </div>
+                                <div class="percentage">${percentage.toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Auto refresh every 30 seconds
+        setInterval(() => {
+            const settingsDocSnap = getDoc(settingsDoc);
+            settingsDocSnap.then((doc) => {
+                const settings = doc.exists() ? doc.data() : { resultsPublished: false };
+                if (settings.resultsPublished) {
+                    loadResults();
+                } else {
+                    loadVoters();
+                }
+            });
+        }, 30000);
+    </script>
+</body>
+</html>
