@@ -73,6 +73,10 @@
             max-height: 600px;
             overflow-y: auto;
             margin-top: 20px;
+            border: 2px solid #ecf0f1;
+            border-radius: 15px;
+            padding: 15px;
+            background: #f8f9fa;
         }
         .voter-item {
             background: white;
@@ -84,15 +88,45 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: all 0.3s;
+        }
+        .voter-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
         .voter-name {
             font-size: 1.1em;
             font-weight: bold;
             color: #2c3e50;
         }
+        .voter-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .voter-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
         .timestamp {
             color: #7f8c8d;
             font-size: 0.9em;
+        }
+        .vote-status {
+            background: #27ae60;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
         }
         .results-grid {
             display: grid;
@@ -204,11 +238,17 @@
             color: #7f8c8d;
             margin: 15px 0;
             font-style: italic;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 10px;
         }
         .message {
             text-align: center;
             padding: 40px;
             color: #7f8c8d;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin: 20px 0;
         }
         .results-hidden {
             text-align: center;
@@ -216,6 +256,22 @@
             background: #f8f9fa;
             border-radius: 10px;
             margin: 20px 0;
+        }
+        .voter-count {
+            background: #3498db;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .privacy-notice {
+            background: linear-gradient(135deg, #fff3e0, #ffccbc);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 5px solid #ff9800;
+            font-size: 0.9em;
         }
         @media (max-width: 768px) {
             .stats-cards {
@@ -232,7 +288,11 @@
             .voter-item {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 5px;
+                gap: 8px;
+            }
+            .voter-info {
+                width: 100%;
+                justify-content: space-between;
             }
         }
     </style>
@@ -266,17 +326,29 @@
                 </div>
             </div>
 
+            <!-- Privacy Notice -->
+            <div class="privacy-notice">
+                <strong>🔒 গোপনীয়তা নোটিশ:</strong> 
+                ভোটারদের তালিকা শুধুমাত্র ভোট দেওয়ার তথ্য দেখায়। কে কাকে ভোট দিয়েছে সেই তথ্য গোপন রাখা হয়েছে।
+            </div>
+
             <!-- Results Hidden Message -->
             <div id="results-hidden-message" class="results-hidden">
                 <h3>ফলাফল এখনও প্রকাশিত হয়নি</h3>
                 <p>ফলাফল প্রকাশের পর এখানে প্রার্থীদের ভোট সংখ্যা দেখা যাবে</p>
+                <p style="margin-top: 10px; color: #7f8c8d; font-size: 0.9em;">
+                    বর্তমানে শুধুমাত্র ভোটারদের তালিকা দেখা যাচ্ছে
+                </p>
             </div>
 
             <!-- Voters List (Default View) -->
             <div id="voters-view">
-                <h2 style="margin-bottom: 15px; color: #2c3e50;">ভোটারদের তালিকা</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2 style="color: #2c3e50;">ভোটারদের তালিকা</h2>
+                    <div class="voter-count" id="voter-count">মোট: ০ জন</div>
+                </div>
                 <div class="refresh-info">
-                    তালিকা স্বয়ংক্রিয়ভাবে আপডেট হয় - প্রতি ৩০ সেকেন্ডে
+                    ⏰ তালিকা স্বয়ংক্রিয়ভাবে আপডেট হয় - প্রতি ৩০ সেকেন্ডে
                 </div>
                 <div class="voters-list" id="voters-container">
                     <!-- ভোটারদের তালিকা এখানে লোড হবে -->
@@ -287,7 +359,7 @@
             <div id="results-view" style="display: none;">
                 <h2 style="margin-bottom: 15px; color: #2c3e50;">প্রার্থীদের ভোট ফলাফল</h2>
                 <div class="refresh-info">
-                    ফলাফল স্বয়ংক্রিয়ভাবে আপডেট হয় - প্রতি ৩০ সেকেন্ডে
+                    ⏰ ফলাফল স্বয়ংক্রিয়ভাবে আপডেট হয় - প্রতি ৩০ সেকেন্ডে
                 </div>
                 <div class="results-grid" id="results-container">
                     <!-- ফলাফল এখানে লোড হবে -->
@@ -465,6 +537,7 @@
         // Update statistics
         function updateStatistics(votes) {
             document.getElementById('total-votes').textContent = votes.length;
+            document.getElementById('voter-count').textContent = `মোট: ${votes.length} জন`;
 
             // Only calculate winner if results are published
             const settingsDocSnap = getDoc(settingsDoc);
@@ -491,7 +564,7 @@
             });
         }
 
-        // Display voters list
+        // Display voters list (WITHOUT showing who voted for whom)
         function displayVotersList(votes) {
             const container = document.getElementById('voters-container');
             const sortedVotes = votes.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -506,15 +579,33 @@
                 return;
             }
             
-            container.innerHTML = sortedVotes.map(vote => {
+            container.innerHTML = sortedVotes.map((vote, index) => {
                 const time = new Date(vote.timestamp).toLocaleString('bn-BD');
+                const avatarText = getAvatarText(vote.voterName);
+                
                 return `
                     <div class="voter-item">
-                        <div class="voter-name">${vote.voterName}</div>
-                        <div class="timestamp">${time}</div>
+                        <div class="voter-info">
+                            <div class="voter-avatar">${avatarText}</div>
+                            <div>
+                                <div class="voter-name">${vote.voterName}</div>
+                                <div class="timestamp">ভোট দিয়েছেন: ${time}</div>
+                            </div>
+                        </div>
+                        <div class="vote-status">ভোট প্রদান ✅</div>
                     </div>
                 `;
             }).join('');
+        }
+
+        // Helper function to get avatar text from name
+        function getAvatarText(name) {
+            if (!name) return '?';
+            const words = name.trim().split(' ');
+            if (words.length === 1) {
+                return words[0].charAt(0).toUpperCase();
+            }
+            return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
         }
 
         // Display results
@@ -594,4 +685,4 @@
         }, 30000);
     </script>
 </body>
-</html>
+    </html>
