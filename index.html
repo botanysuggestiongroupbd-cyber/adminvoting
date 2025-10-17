@@ -1260,10 +1260,7 @@
             
             // ফিঙ্গারপ্রিন্ট জেনারেট
             deviceFingerprint = await generateFingerprint();
-            
-            await checkVotingStatus();
-            await checkVoteStatus();
-            
+                       
             // Event listeners
             document.getElementById('voter-name').addEventListener('input', updateVoteButton);
             
