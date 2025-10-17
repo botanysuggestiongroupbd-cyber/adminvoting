@@ -937,6 +937,23 @@
             }
         }
 
+        // Floating elements background
+        function createFloatingElements() {
+            const container = document.getElementById('floating-elements');
+            const elements = ['⚡', '✨', '🌟', '💫', '🎯', '🎨'];
+            
+            for (let i = 0; i < 12; i++) {
+                const element = document.createElement('div');
+                element.className = 'floating-element';
+                element.textContent = elements[Math.floor(Math.random() * elements.length)];
+                element.style.left = Math.random() * 100 + 'vw';
+                element.style.animationDelay = Math.random() * 5 + 's';
+                element.style.fontSize = (20 + Math.random() * 30) + 'px';
+                element.style.color = `rgba(255, 255, 255, ${Math.random() * 0.3})`;
+                container.appendChild(element);
+            }
+        }
+
         // Popup functions
         function showPopup() {
             document.getElementById('results-popup').style.display = 'flex';
