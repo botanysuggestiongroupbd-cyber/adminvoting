@@ -275,15 +275,21 @@
         }
         @media (max-width: 768px) {
             .stats-cards {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: 1fr;
+            }
+            .stat-card.winner {
+                order: -1; /* বিজয়ী কার্ডটিকে প্রথমে দেখাবে */
+                margin-bottom: 10px;
             }
             .candidate-header {
                 flex-direction: column;
                 text-align: center;
+                gap: 10px;
             }
             .vote-stats {
                 flex-direction: column;
                 text-align: center;
+                gap: 10px;
             }
             .voter-item {
                 flex-direction: column;
@@ -293,6 +299,28 @@
             .voter-info {
                 width: 100%;
                 justify-content: space-between;
+            }
+            .candidate-marker {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5em;
+            }
+            .candidate-name {
+                font-size: 1.3em;
+            }
+        }
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            .header p {
+                font-size: 1em;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+            .stat-number {
+                font-size: 2em;
             }
         }
     </style>
@@ -309,6 +337,11 @@
         <div class="content">
             <!-- Statistics -->
             <div class="stats-cards">
+                <div class="stat-card">
+                    <div class="stat-label">মোট ভোটার</div>
+                    <div class="stat-number" id="total-voters">0</div>
+                    <div class="stat-label">জন</div>
+                </div>
                 <div class="stat-card">
                     <div class="stat-label">মোট ভোট</div>
                     <div class="stat-number" id="total-votes">0</div>
@@ -534,10 +567,14 @@
             }
         }
 
-        // Update statistics
+        // Update statistics - CORRECTED VOTE COUNTING
         function updateStatistics(votes) {
-            document.getElementById('total-votes').textContent = votes.length;
-            document.getElementById('voter-count').textContent = `মোট: ${votes.length} জন`;
+            const totalVoters = votes.length;
+            const totalVotes = totalVoters * 2; // প্রতিটি ভোটার ২টি ভোট দেয়
+            
+            document.getElementById('total-voters').textContent = totalVoters;
+            document.getElementById('total-votes').textContent = totalVotes;
+            document.getElementById('voter-count').textContent = `মোট: ${totalVoters} জন`;
 
             // Only calculate winner if results are published
             const settingsDocSnap = getDoc(settingsDoc);
